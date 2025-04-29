@@ -1,0 +1,27 @@
+name: CI Pipeline
+
+on:
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js v22.14.0
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.14.0'
+
+      - name: Install Node.js dependencies
+        run: npm ci
+        working-directory: ./PromptService
+
+      - name: Run Node.js tests
+        run: npm test
+        working-directory: ./PromptService
