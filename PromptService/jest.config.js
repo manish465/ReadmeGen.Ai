@@ -1,3 +1,4 @@
-module.exports = {
-    testMatch: ["<rootDir>/tests/service/*.test.js"],
+export default {
+    testEnvironment: "node",
+    transform: {},
 };

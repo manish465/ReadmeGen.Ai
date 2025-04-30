@@ -1,4 +1,4 @@
-exports.detectStack = (languages = [], files = []) => {
+export function detectStack(languages = [], files = []) {
     const stack = new Set();
 
     // --- Language-based inference ---
@@ -32,4 +32,4 @@ exports.detectStack = (languages = [], files = []) => {
     if (fileNames.includes("webpack.config.js")) stack.add("Webpack");
 
     return Array.from(stack);
-};
+}

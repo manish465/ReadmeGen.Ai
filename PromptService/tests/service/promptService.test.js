@@ -1,7 +1,13 @@
-const { prompt, healthCheck } = require("../../src/service/promptService");
-const { Octokit } = require("@octokit/rest");
+import { jest } from "@jest/globals";
 
-jest.mock("@octokit/rest");
+// Mock the entire module BEFORE importing it
+jest.unstable_mockModule("@octokit/rest", () => ({
+    Octokit: jest.fn(),
+}));
+
+// Import after mocking
+const { Octokit } = await import("@octokit/rest");
+import { prompt, healthCheck } from "../../src/service/promptService.js";
 
 describe("Prompt Generator Service", () => {
     let mockReq;

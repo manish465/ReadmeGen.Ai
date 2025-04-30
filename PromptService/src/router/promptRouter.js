@@ -1,7 +1,7 @@
-const express = require("express");
-const { prompt, healthCheck } = require("../service/promptService");
+import { Router } from "express";
+import { prompt, healthCheck } from "../service/promptService";
 
-const router = express.Router();
+const router = Router();
 
 router.post("/", prompt);
 router.post("/health-check", healthCheck);
