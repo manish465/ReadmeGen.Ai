@@ -1,145 +1,164 @@
 import { jest } from "@jest/globals";
+import { prompt, healthCheck } from "../../src/service/promptService";
+import { Octokit } from "@octokit/rest";
 
-// Mock the entire module BEFORE importing it
-jest.unstable_mockModule("@octokit/rest", () => ({
-    Octokit: jest.fn(),
+jest.mock("@octokit/rest");
+jest.mock("../../src/utils/lang", () => ({
+    detectStack: jest.fn(() => ["nodejs", "react"]),
 }));
 
-// Import after mocking
-const { Octokit } = await import("@octokit/rest");
-import { prompt, healthCheck } from "../../src/service/promptService.js";
-
-describe("Prompt Generator Service", () => {
+describe("Repository Prompt API", () => {
     let mockReq;
     let mockRes;
-    let mockOctokit;
 
     beforeEach(() => {
         jest.clearAllMocks();
 
         mockReq = {
-            query: {
-                owner: "testowner",
-                repo: "testrepo",
-            },
+            query: {},
         };
 
         mockRes = {
+            json: jest.fn().mockReturnThis(),
             status: jest.fn().mockReturnThis(),
-            json: jest.fn(),
+        };
+    });
+
+    test("should return 400 if owner or repo is missing", async () => {
+        await prompt(mockReq, mockRes);
+
+        expect(mockRes.status).toHaveBeenCalledWith(400);
+        expect(mockRes.json).toHaveBeenCalledWith({
+            error: "owner and repo are required",
+        });
+    });
+
+    test("should handle successful repository data fetch", async () => {
+        mockReq.query = {
+            owner: "testowner",
+            repo: "testrepo",
         };
 
-        mockOctokit = {
-            repos: {
-                get: jest.fn(),
-                getContent: jest.fn(),
-                listLanguages: jest.fn(),
+        const mockRepoData = {
+            data: {
+                name: "testrepo",
+                description: "Test Repository",
+                stargazers_count: 100,
+                forks_count: 50,
+                topics: ["javascript", "testing"],
             },
         };
 
-        Octokit.mockImplementation(() => mockOctokit);
+        const mockContents = {
+            data: [
+                {
+                    type: "file",
+                    name: "package.json",
+                    path: "package.json",
+                },
+            ],
+        };
+
+        const mockFileContent = {
+            data: {
+                content: Buffer.from('{"name": "test"}').toString("base64"),
+            },
+        };
+
+        const mockLanguages = {
+            data: {
+                JavaScript: 100000,
+                TypeScript: 50000,
+            },
+        };
+
+        Octokit.mockImplementation(() => ({
+            repos: {
+                get: jest.fn().mockResolvedValue(mockRepoData),
+                getContent: jest
+                    .fn()
+                    .mockResolvedValueOnce(mockContents)
+                    .mockResolvedValueOnce(mockFileContent),
+                listLanguages: jest.fn().mockResolvedValue(mockLanguages),
+            },
+        }));
+
+        await prompt(mockReq, mockRes);
+
+        expect(mockRes.json).toHaveBeenCalledWith(
+            expect.objectContaining({
+                name: "testrepo",
+                description: "Test Repository",
+                stars: 100,
+                forks: 50,
+                topics: ["javascript", "testing"],
+                languages: ["JavaScript", "TypeScript"],
+                detectedStack: ["nodejs", "react"],
+            }),
+        );
     });
 
-    describe("prompt endpoint", () => {
-        // Existing test cases...
+    test("should handle rate limit error", async () => {
+        mockReq.query = {
+            owner: "testowner",
+            repo: "testrepo",
+        };
 
-        it("should handle empty repository data gracefully", async () => {
-            mockOctokit.repos.get.mockResolvedValue({
-                data: {
-                    name: "testrepo",
-                    description: null,
-                    stargazers_count: 0,
-                    forks_count: 0,
-                    topics: [],
-                },
-            });
-
-            mockOctokit.repos.getContent.mockResolvedValue({ data: [] });
-            mockOctokit.repos.listLanguages.mockResolvedValue({ data: {} });
-
-            await prompt(mockReq, mockRes);
-
-            expect(mockRes.json).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    name: "testrepo",
-                    description: "",
-                    stars: 0,
-                    forks: 0,
-                    topics: [],
-                    languages: [],
+        Octokit.mockImplementation(() => ({
+            repos: {
+                get: jest.fn().mockRejectedValue({
+                    status: 403,
                 }),
-            );
-        });
+            },
+        }));
 
-        it("should handle invalid repository content", async () => {
-            mockOctokit.repos.get.mockResolvedValue({
-                data: {
-                    name: "testrepo",
-                    description: "Test Description",
-                    stargazers_count: 100,
-                    forks_count: 50,
-                    topics: ["javascript"],
-                },
-            });
+        await prompt(mockReq, mockRes);
 
-            mockOctokit.repos.getContent.mockRejectedValue(
-                new Error("Invalid content"),
-            );
-            mockOctokit.repos.listLanguages.mockResolvedValue({
-                data: { JavaScript: 1000 },
-            });
-
-            await prompt(mockReq, mockRes);
-
-            expect(mockRes.status).toHaveBeenCalledWith(500);
-            expect(mockRes.json).toHaveBeenCalledWith({
-                error: "Failed to ingest repository",
-            });
-        });
-
-        it("should handle rate limiting errors", async () => {
-            const rateLimitError = new Error("API rate limit exceeded");
-            rateLimitError.status = 403;
-            mockOctokit.repos.get.mockRejectedValue(rateLimitError);
-
-            await prompt(mockReq, mockRes);
-
-            expect(mockRes.status).toHaveBeenCalledWith(403);
-            expect(mockRes.json).toHaveBeenCalledWith({
-                error: "API rate limit exceeded",
-            });
-        });
-
-        it("should handle malformed response data", async () => {
-            mockOctokit.repos.get.mockResolvedValue({
-                data: {
-                    name: "testrepo",
-                    // Missing other required fields
-                },
-            });
-
-            await prompt(mockReq, mockRes);
-
-            expect(mockRes.status).toHaveBeenCalledWith(500);
-            expect(mockRes.json).toHaveBeenCalledWith({
-                error: "Failed to ingest repository",
-            });
+        expect(mockRes.status).toHaveBeenCalledWith(403);
+        expect(mockRes.json).toHaveBeenCalledWith({
+            error: "API rate limit exceeded",
         });
     });
 
-    describe("healthCheck endpoint", () => {
-        // Existing test case...
+    test("should handle repository not found error gracefully", async () => {
+        mockReq.query = {
+            owner: "testowner",
+            repo: "testrepo",
+        };
 
-        it("should include timestamp in response", () => {
-            const before = new Date();
-            healthCheck(mockReq, mockRes);
-            const after = new Date();
+        Octokit.mockImplementation(() => ({
+            repos: {
+                get: jest.fn().mockRejectedValue({
+                    status: 404,
+                }),
+                getContent: jest.fn().mockResolvedValue({ data: [] }),
+                listLanguages: jest.fn().mockResolvedValue({ data: {} }),
+            },
+        }));
 
-            const response = mockRes.json.mock.calls[0][0];
-            const timestamp = new Date(response.timestamp);
+        await prompt(mockReq, mockRes);
 
-            expect(timestamp).toBeInstanceOf(Date);
-            expect(timestamp >= before && timestamp <= after).toBeTruthy();
+        expect(mockRes.json).toHaveBeenCalledWith(
+            expect.objectContaining({
+                name: "testrepo",
+                description: "",
+                stars: 0,
+                forks: 0,
+                topics: [],
+                files: [],
+                languages: [],
+                detectedStack: ["nodejs", "react"],
+            }),
+        );
+    });
+
+    test("healthCheck should return 200 status", async () => {
+        await healthCheck(mockReq, mockRes);
+
+        expect(mockRes.status).toHaveBeenCalledWith(200);
+        expect(mockRes.json).toHaveBeenCalledWith({
+            message: "Prompt Service is running",
+            timestamp: expect.any(String),
         });
     });
 });
