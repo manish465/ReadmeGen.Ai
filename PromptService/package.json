@@ -1,25 +1,24 @@
 {
-    "name": "promptservice",
+    "name": "prompt-service",
     "version": "1.0.0",
-    "description": "",
+    "description": "a node service that will generate prompt using githup repository",
+    "license": "ISC",
+    "author": "manish465",
+    "type": "module",
     "main": "index.js",
     "scripts": {
-        "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest"
+        "build": "npx tsc",
+        "start": "node dist/index.js",
+        "dev": "npm run build && npm run start"
     },
-    "keywords": [],
-    "author": "",
-    "license": "ISC",
-    "type": "module",
+    "devDependencies": {
+        "@types/express": "^5.0.1",
+        "typescript": "^5.8.3"
+    },
     "dependencies": {
         "@octokit/rest": "^21.1.1",
         "cors": "^2.8.5",
         "dotenv": "^16.5.0",
         "express": "^5.1.0"
-    },
-    "devDependencies": {
-        "@babel/preset-env": "^7.26.9",
-        "babel-jest": "^29.7.0",
-        "cross-env": "^7.0.3",
-        "jest": "^29.7.0"
     }
 }
