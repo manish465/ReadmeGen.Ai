@@ -5,15 +5,20 @@ import { ICreatePromptResponse, IFileContentList } from '../types/github';
 
 const octokit: Octokit = new Octokit();
 
-export const createRepoPrompt = async (req: Request, res: Response) => {
+export const createRepoPrompt = async (req: Request, res: Response): Promise<any> => {
     const { repo, filePaths } = req.query;
 
-    if (repo === undefined) {
-        res.status(400).send({ error: 'messing repo data' });
+    if (!repo) {
+        return res.status(400).send({ error: 'Missing repo data' });
     }
 
     const [owner, repoName] = repo?.toString().split('/').slice(-2) || ['', ''];
-    const inputFilePathList: string[] = filePaths?.toLocaleString().split(',') || [];
+
+    if (!owner || !repoName) {
+        return res.status(400).send({ error: 'Invalid repo format' });
+    }
+
+    const inputFilePathList = typeof filePaths === 'string' ? filePaths.split(',') : [];
     const inputData: IOctokitGetRepoDataInput = {
         owner: owner,
         repoName: repoName,
