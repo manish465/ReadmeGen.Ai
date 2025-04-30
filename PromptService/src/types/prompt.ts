@@ -1,4 +1,9 @@
 export interface IOctokitGetRepoDataInput {
     owner: string;
-    repo: string;
+    repoName: string;
+}
+
+export interface IContentError {
+    status: number | null;
+    errorMessage: string | null;
 }

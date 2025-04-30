@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { Octokit } from '@octokit/rest';
-import { IOctokitGetRepoDataInput } from '../types/prompt';
+import { IContentError, IOctokitGetRepoDataInput } from '../types/prompt';
 import { ICreatePromptResponse, IFileContentList } from '../types/github';
 
 const octokit: Octokit = new Octokit();
@@ -12,28 +12,37 @@ export const createRepoPrompt = async (req: Request, res: Response) => {
         res.status(400).send({ error: 'messing repo data' });
     }
 
-    const inputDataList: string[] = repo?.toLocaleString().split('/') || [];
+    const [owner, repoName] = repo?.toString().split('/').slice(-2) || ['', ''];
+    const inputFilePathList: string[] = filePaths?.toLocaleString().split(',') || [];
     const inputData: IOctokitGetRepoDataInput = {
-        owner: inputDataList[inputDataList.length - 2],
-        repo: inputDataList[inputDataList.length - 1],
+        owner: owner,
+        repoName: repoName,
     };
 
     let repoData;
-    let fileContentDataList: IFileContentList[] = [];
+    let fileContentDataList: IFileContentList[] | IContentError[] = [];
 
-    if (filePaths) {
-        const inputFilePathList: string[] = filePaths?.toLocaleString().split(',') || [];
+    if (inputFilePathList.length > 0) {
         fileContentDataList = await fetchFilesContent(
             inputData.owner,
-            inputData.repo,
+            inputData.repoName,
             inputFilePathList
         );
+
+        if (fileContentDataList.some((item) => 'errorMessage' in item && item.errorMessage)) {
+            res.status(400).send({
+                error: 'Error fetching file content',
+            });
+            return;
+        }
     }
 
     try {
-        repoData = await octokit.repos.get({ owner: inputData.owner, repo: inputData.repo });
-    } catch (e) {
-        console.log(e);
+        repoData = await octokit.repos.get({ owner: inputData.owner, repo: inputData.repoName });
+    } catch (e: any) {
+        res.status(e?.error?.status || 400).send({
+            error: e?.error?.response?.data?.message || 'Somthing went wrong',
+        });
     }
 
     const response: ICreatePromptResponse = {
@@ -43,7 +52,9 @@ export const createRepoPrompt = async (req: Request, res: Response) => {
         license: repoData?.data?.license?.name || '',
         topics: repoData?.data?.topics || [],
         languages: repoData?.data?.language || '',
-        fileContentList: fileContentDataList,
+        fileContentList: fileContentDataList.filter(
+            (item): item is IFileContentList => 'content' in item && item.content !== null
+        ),
     };
 
     res.status(200).send({ data: response });
@@ -57,21 +68,32 @@ export const fetchFilesContent = async (
     owner: string,
     repo: string,
     filePaths: string[]
-): Promise<IFileContentList[]> => {
-    const results = await Promise.all(
-        filePaths.map(async (path) => {
-            const { data } = await octokit.rest.repos.getContent({
-                owner,
-                repo,
-                path,
-            });
+): Promise<IFileContentList[] | IContentError[]> => {
+    const results: IFileContentList[] | IContentError[] = [];
+
+    for (const path of filePaths) {
+        try {
+            const { data } = await octokit.rest.repos.getContent({ owner, repo, path });
 
             if ('content' in data && typeof data.content === 'string') {
-                return { path, content: Buffer.from(data.content, 'base64').toString('utf-8') };
+                results.push({
+                    path,
+                    content: Buffer.from(data.content, 'base64').toString('utf-8'),
+                    status: null,
+                    errorMessage: null,
+                });
             } else {
-                return { path, content: null };
+                results.push({ path, content: null, status: null, errorMessage: null });
             }
-        })
-    );
+        } catch (error: any) {
+            results.push({
+                path,
+                content: null,
+                status: error?.status,
+                errorMessage: error?.response?.data?.message || 'Failed to fetch content',
+            });
+        }
+    }
+
     return results;
 };
