@@ -4,21 +4,28 @@
     "description": "a node service that will generate prompt using githup repository",
     "license": "ISC",
     "author": "manish465",
-    "type": "module",
+    "type": "commonjs",
     "main": "index.js",
     "scripts": {
-        "build": "npx tsc",
+        "build": "tsc",
         "start": "node dist/index.js",
-        "dev": "npm run build && npm run start"
+        "dev": "nodemon src/index.ts"
     },
     "devDependencies": {
+        "@types/cors": "^2.8.17",
         "@types/express": "^5.0.1",
+        "@types/unescape-js": "^1.0.3",
+        "nodemon": "^3.1.10",
+        "prettier": "^3.5.3",
+        "ts-node": "^10.9.2",
+        "tsconfig-paths": "^4.2.0",
         "typescript": "^5.8.3"
     },
     "dependencies": {
         "@octokit/rest": "^21.1.1",
         "cors": "^2.8.5",
         "dotenv": "^16.5.0",
-        "express": "^5.1.0"
+        "express": "^5.1.0",
+        "unescape-js": "^1.1.4"
     }
 }

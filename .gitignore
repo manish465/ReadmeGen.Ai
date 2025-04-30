@@ -39,5 +39,5 @@ build/
 
 ### Node Js ###
 node_modules
-coverage
+dist
 .env
