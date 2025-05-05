@@ -22,12 +22,10 @@
         "@types/supertest": "^6.0.3",
         "@types/unescape-js": "^1.0.3",
         "chai": "^5.2.0",
-        "chai-http": "^5.1.2",
         "mocha": "^11.2.2",
         "nodemon": "^3.1.10",
         "prettier": "^3.5.3",
         "sinon": "^20.0.0",
-        "supertest": "^7.1.0",
         "ts-node": "^10.9.2",
         "tsconfig-paths": "^4.2.0",
         "typescript": "^5.8.3"
