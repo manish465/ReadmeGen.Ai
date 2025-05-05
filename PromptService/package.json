@@ -1,0 +1,38 @@
+{
+    "name": "prompt-service",
+    "version": "1.0.0",
+    "description": "a node service that will generate prompt using github repository",
+    "license": "ISC",
+    "author": "manish465",
+    "type": "commonjs",
+    "main": "index.js",
+    "scripts": {
+        "build": "tsc",
+        "start": "node dist/index.js",
+        "dev": "nodemon src/index.ts",
+        "test": "mocha -r ts-node/register src/test/**/*.test.ts"
+    },
+    "devDependencies": {
+        "@types/chai": "^5.2.1",
+        "@types/cors": "^2.8.17",
+        "@types/express": "^5.0.1",
+        "@types/mocha": "^10.0.10",
+        "@types/sinon": "^17.0.4",
+        "@types/unescape-js": "^1.0.3",
+        "chai": "^5.2.0",
+        "mocha": "^11.2.2",
+        "nodemon": "^3.1.10",
+        "prettier": "^3.5.3",
+        "sinon": "^20.0.0",
+        "ts-node": "^10.9.2",
+        "tsconfig-paths": "^4.2.0",
+        "typescript": "^5.8.3"
+    },
+    "dependencies": {
+        "@octokit/rest": "^21.1.1",
+        "cors": "^2.8.5",
+        "dotenv": "^16.5.0",
+        "express": "^5.1.0",
+        "unescape-js": "^1.1.4"
+    }
+}

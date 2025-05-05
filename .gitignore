@@ -39,3 +39,5 @@ build/
 
 ### Node Js ###
 node_modules
+dist
+.env
