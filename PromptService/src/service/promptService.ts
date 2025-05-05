@@ -27,9 +27,10 @@ export const fetchFilesContent = async (
 
         return results;
     } catch (error: any) {
+        console.log(error);
         return {
-            status: error?.error?.status || 400,
-            message: error?.error?.response?.data?.message || 'Somthing went wrong',
+            status: error?.status || 400,
+            message: error?.response?.data?.message || 'Somthing went wrong',
         };
     }
 };
@@ -55,8 +56,8 @@ export const createRepoPromptService = async (
         });
     } catch (error: any) {
         return {
-            status: error?.error?.status || 400,
-            message: error?.error?.response?.data?.message || 'Somthing went wrong',
+            status: error?.status || 400,
+            message: error?.response?.data?.message || 'Somthing went wrong',
         };
     }
 

@@ -8,7 +8,7 @@ import {
 const router: Router = express.Router();
 
 router.post('/ingest', createRepoPrompt);
-router.post('/prompt', createRepoPromptCompact);
+router.post('/prompt-compact', createRepoPromptCompact);
 router.get('/health-check', healthCheck);
 
 export default router;

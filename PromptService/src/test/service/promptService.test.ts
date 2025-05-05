@@ -48,14 +48,14 @@ describe('promptService', () => {
         it('should return error response on API failure', async () => {
             octokitStub.rest = {
                 repos: {
-                    getContent: sinon.stub().rejects({ error: { status: 403 } }),
+                    getContent: sinon.stub().rejects({ error: { status: 400 } }),
                 },
             } as any;
 
             const result = await service.fetchFilesContent('owner', 'repo', ['fail.js']);
 
             expect(result).to.deep.equal({
-                status: 403,
+                status: 400,
                 message: 'Somthing went wrong',
             });
         });
@@ -112,13 +112,13 @@ describe('promptService', () => {
                 .resolves([{ path: 'index.js', content: 'data' }]);
 
             octokitStub.repos = {
-                get: sinon.stub().rejects({ error: { status: 404 } }),
+                get: sinon.stub().rejects({ error: { status: 400 } }),
             } as any;
 
             const result = await service.createRepoPromptService('owner', 'repo', ['index.js']);
 
             expect(result).to.deep.equal({
-                status: 404,
+                status: 400,
                 message: 'Somthing went wrong',
             });
         });

@@ -1,4 +1,4 @@
-version: '3.8'
+name: ReadMeGenAI
 
 services:
   consul-service:
@@ -9,7 +9,7 @@ services:
       - "8600:8600/udp"
     command: agent -dev -client=0.0.0.0
     networks:
-      - app-network
+      - discovery-service-network
 
   prompt-service:
     build:
@@ -21,9 +21,40 @@ services:
       - NAME=prompt-service
     ports:
       - "9010:9010"
-    command: ["npm", "run", "dev"]
+    depends_on:
+      - consul-service
     networks:
-      - app-network
+      - discovery-service-network
+
+  readme-writer:
+    build:
+      context: '../LLM'
+      dockerfile: Dockerfile
+    container_name: readme-writer
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    networks:
+      - ai-network
+
+  readme-service:
+    build:
+      context: '../ReadmeService'
+      dockerfile: Dockerfile
+    container_name: readme-service
+    ports:
+      - "9020:9020"
+    depends_on:
+      - consul-service
+      - readme-writer
+    networks:
+      - discovery-service-network
+      - ai-network
+
+volumes:
+  ollama-models:
 
 networks:
-  app-network:
+  discovery-service-network:
+  ai-network:

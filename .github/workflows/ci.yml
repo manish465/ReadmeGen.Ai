@@ -6,7 +6,8 @@ on:
       - master
 
 jobs:
-  build-and-test:
+  prompt-service-tests:
+    name: Run Prompt Service Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -25,3 +26,29 @@ jobs:
       - name: Run Node.js tests
         run: npm test
         working-directory: ./PromptService
+
+  readme-service-tests:
+    name: Run Readme Service Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'corretto'
+          java-version: '17'
+
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Build and run Spring Boot tests
+        run: mvn clean verify
+        working-directory: ./ReadmeService
