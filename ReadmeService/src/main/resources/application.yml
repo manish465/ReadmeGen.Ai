@@ -1,0 +1,21 @@
+server:
+  port: 9020
+
+spring:
+  application:
+    name: readme-service
+  cloud:
+    consul:
+      host: consul-service
+      port: 8500
+      discovery:
+        register: true
+        enabled: true
+        service-name: readme-service
+        health-check-path: /api/v1/health-check
+        health-check-interval: 10s
+  ai:
+    ollama:
+      base-url: http://localhost:11434/v1
+      chat:
+        model: gemma3:1b
