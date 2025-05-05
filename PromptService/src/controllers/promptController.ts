@@ -3,7 +3,7 @@ import { Octokit } from '@octokit/rest';
 import { IContentError, IOctokitGetRepoDataInput } from '../types/prompt';
 import { ICreatePromptResponse, IFileContentList } from '../types/github';
 
-const octokit: Octokit = new Octokit();
+export const octokit: Octokit = new Octokit();
 
 export const createRepoPrompt = async (req: Request, res: Response): Promise<any> => {
     const { repo, filePaths } = req.query;
