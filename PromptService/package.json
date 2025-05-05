@@ -9,7 +9,7 @@
     "scripts": {
         "build": "tsc",
         "start": "node dist/index.js",
-        "dev": "nodemon src/index.ts",
+        "dev": "nodemon src/local.ts",
         "test": "mocha -r ts-node/register src/test/**/*.test.ts"
     },
     "devDependencies": {
@@ -19,12 +19,14 @@
         "@types/express": "^5.0.1",
         "@types/mocha": "^10.0.10",
         "@types/sinon": "^17.0.4",
+        "@types/supertest": "^6.0.3",
         "@types/unescape-js": "^1.0.3",
         "chai": "^5.2.0",
         "mocha": "^11.2.2",
         "nodemon": "^3.1.10",
         "prettier": "^3.5.3",
         "sinon": "^20.0.0",
+        "supertest": "^7.1.0",
         "ts-node": "^10.9.2",
         "tsconfig-paths": "^4.2.0",
         "typescript": "^5.8.3"

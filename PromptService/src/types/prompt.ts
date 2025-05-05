@@ -3,7 +3,13 @@ export interface IOctokitGetRepoDataInput {
     repoName: string;
 }
 
-export interface IContentError {
-    status: number | null;
-    errorMessage: string | null;
+export interface ICreateRepoPromptCompact {
+    repo: string;
+    filePaths: string;
+    customCommands: string;
+}
+
+export interface IErrorResonse {
+    status: number;
+    message: string;
 }
