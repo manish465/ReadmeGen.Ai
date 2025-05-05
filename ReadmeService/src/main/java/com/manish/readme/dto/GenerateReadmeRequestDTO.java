@@ -13,6 +13,6 @@ import java.util.List;
 @Builder
 public class GenerateReadmeRequestDTO {
     private String repo;
-    private List<String> filePaths;
+    private List<String> inputFilePathList;
     private List<String> customCommands;
 }
