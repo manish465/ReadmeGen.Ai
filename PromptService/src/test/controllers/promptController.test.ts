@@ -1,108 +1,169 @@
-import express from 'express';
-import request from 'supertest';
 import { expect } from 'chai';
 import sinon from 'sinon';
-
+import * as promptService from '../../service/promptService';
 import {
     createRepoPrompt,
     createRepoPromptCompact,
     healthCheck,
 } from '../../controllers/promptController';
-import * as promptService from '../../service/promptService';
 
-const app = express();
-app.get('/repo-prompt', createRepoPrompt);
-app.get('/repo-prompt-compact', createRepoPromptCompact);
-app.get('/health', healthCheck);
+describe('Repository Controller', () => {
+    let req: any;
+    let res: any;
+    let statusStub: sinon.SinonStub;
+    let sendStub: sinon.SinonStub;
+    let serviceStub: sinon.SinonStub;
+    let compactServiceStub: sinon.SinonStub;
 
-describe('Prompt Controller (Mocha + Chai + Sinon)', () => {
+    beforeEach(() => {
+        sendStub = sinon.stub();
+        statusStub = sinon.stub().returns({ send: sendStub });
+        req = { body: {} };
+        res = { status: statusStub };
+        serviceStub = sinon.stub(promptService, 'createRepoPromptService');
+        compactServiceStub = sinon.stub(promptService, 'createRepoPromptCompactService');
+    });
+
     afterEach(() => {
         sinon.restore();
     });
 
     describe('healthCheck', () => {
-        it('should return 200 with working message', async () => {
-            const res = await request(app).get('/health');
-            expect(res.status).to.equal(200);
-            expect(res.body).to.deep.equal({ message: 'Prompt Service is working' });
+        it('should return 200 status with working message', async () => {
+            await healthCheck(req, res);
+
+            expect(statusStub.calledWith(200)).to.be.true;
+            expect(sendStub.calledWith({ message: 'Prompt Service is working' })).to.be.true;
         });
     });
 
     describe('createRepoPrompt', () => {
-        it('should return 400 if repo is missing', async () => {
-            const res = await request(app).get('/repo-prompt');
-            expect(res.status).to.equal(400);
-            expect(res.body).to.have.property('error', 'Missing repo data');
+        it('should return 400 when repo is missing', async () => {
+            req.body = { inputFilePathList: [] };
+
+            await createRepoPrompt(req, res);
+
+            expect(statusStub.calledWith(400)).to.be.true;
+            expect(sendStub.calledWith({ error: 'Invalid or missing repo format' })).to.be.true;
         });
 
-        it('should return 400 if repo format is invalid', async () => {
-            const res = await request(app).get('/repo-prompt?repo=invalidformat');
-            expect(res.status).to.equal(400);
-            expect(res.body).to.have.property('error', 'Invalid repo format');
+        it('should return 400 when repo format is invalid', async () => {
+            req.body = { repo: 'invalid-format', inputFilePathList: [] };
+
+            await createRepoPrompt(req, res);
+
+            expect(statusStub.calledWith(400)).to.be.true;
+            expect(sendStub.calledWith({ error: 'Invalid or missing repo format' })).to.be.true;
         });
 
-        it('should return 200 and data from service', async () => {
-            const mockData = {
-                name: 'test-repo',
-                description: 'A test repository',
-                languages: 'TypeScript',
-                license: 'MIT',
-                isForked: false,
-                stars: 100,
-                topics: ['open-source', 'typescript'],
-                fileContentList: ['README.md', 'index.ts'],
-            };
+        it('should return service error when service returns error', async () => {
+            req.body = { repo: 'owner/repo', inputFilePathList: [] };
+            serviceStub.resolves({ status: 404, message: 'Repository not found' });
 
-            sinon.stub(promptService, 'createRepoPromptService').resolves(mockData as any);
+            await createRepoPrompt(req, res);
 
-            const res = await request(app).get('/repo-prompt?repo=owner/test-repo');
-            expect(res.status).to.equal(200);
-            expect(res.body).to.deep.equal({ data: mockData });
+            expect(statusStub.calledWith(404)).to.be.true;
+            expect(sendStub.calledWith({ error: 'Repository not found' })).to.be.true;
         });
 
-        it('should return error response from service failure', async () => {
-            sinon.stub(promptService, 'createRepoPromptService').resolves({
-                status: 404,
-                message: 'Not Found',
-            });
+        it('should return 200 with data when service succeeds', async () => {
+            req.body = { repo: 'owner/repo', inputFilePathList: [] };
+            const responseData = { files: [], structure: {} };
+            serviceStub.resolves(responseData);
 
-            const res = await request(app).get('/repo-prompt?repo=owner/test-repo');
-            expect(res.status).to.equal(404);
-            expect(res.body).to.deep.equal({ error: 'Not Found' });
+            await createRepoPrompt(req, res);
+
+            expect(statusStub.calledWith(200)).to.be.true;
+            expect(sendStub.calledWith({ data: responseData })).to.be.true;
+            expect(serviceStub.calledWith('owner', 'repo', [])).to.be.true;
+        });
+
+        it('should return 500 when service throws exception', async () => {
+            req.body = { repo: 'owner/repo', inputFilePathList: [] };
+            serviceStub.throws(new Error('Service error'));
+
+            await createRepoPrompt(req, res);
+
+            expect(statusStub.calledWith(500)).to.be.true;
+            expect(sendStub.calledWith({ error: 'Internal server error' })).to.be.true;
+        });
+
+        it('should handle repo with multiple parts', async () => {
+            req.body = { repo: 'github.com/owner/repo', inputFilePathList: [] };
+            const responseData = { files: [], structure: {} };
+            serviceStub.resolves(responseData);
+
+            await createRepoPrompt(req, res);
+
+            expect(serviceStub.calledWith('owner', 'repo', [])).to.be.true;
+            expect(statusStub.calledWith(200)).to.be.true;
         });
     });
 
     describe('createRepoPromptCompact', () => {
-        it('should return 400 if repo is missing', async () => {
-            const res = await request(app).get('/repo-prompt-compact');
-            expect(res.status).to.equal(400);
-            expect(res.body).to.have.property('error', 'Missing repo data');
+        it('should return 400 when repo is missing', async () => {
+            req.body = { inputFilePathList: [], customCommands: {} };
+
+            await createRepoPromptCompact(req, res);
+
+            expect(statusStub.calledWith(400)).to.be.true;
+            expect(sendStub.calledWith({ error: 'Invalid or missing repo format' })).to.be.true;
         });
 
-        it('should return 400 if repo format is invalid', async () => {
-            const res = await request(app).get('/repo-prompt-compact?repo=invalidformat');
-            expect(res.status).to.equal(400);
-            expect(res.body).to.have.property('error', 'Invalid repo format');
+        it('should return 400 when repo format is invalid', async () => {
+            req.body = { repo: 'invalid-format', inputFilePathList: [], customCommands: {} };
+
+            await createRepoPromptCompact(req, res);
+
+            expect(statusStub.calledWith(400)).to.be.true;
+            expect(sendStub.calledWith({ error: 'Invalid or missing repo format' })).to.be.true;
         });
 
-        it('should return 200 and compact prompt data', async () => {
-            const mockData = 'Some formatted repo string';
-            sinon.stub(promptService, 'createRepoPromptCompactService').resolves(mockData as any);
+        it('should return service error when service returns error', async () => {
+            req.body = { repo: 'owner/repo', inputFilePathList: [], customCommands: {} };
+            compactServiceStub.resolves({ status: 404, message: 'Repository not found' });
 
-            const res = await request(app).get('/repo-prompt-compact?repo=owner/test-repo');
-            expect(res.status).to.equal(200);
-            expect(res.body).to.deep.equal({ data: mockData });
+            await createRepoPromptCompact(req, res);
+
+            expect(statusStub.calledWith(404)).to.be.true;
+            expect(sendStub.calledWith({ error: 'Repository not found' })).to.be.true;
         });
 
-        it('should return error response from service failure', async () => {
-            sinon.stub(promptService, 'createRepoPromptCompactService').resolves({
-                status: 500,
-                message: 'Internal Error',
-            });
+        it('should return 200 with data when service succeeds', async () => {
+            req.body = {
+                repo: 'owner/repo',
+                inputFilePathList: [],
+                customCommands: { cmd: 'value' },
+            };
+            const responseData = { files: [], structure: {} };
+            compactServiceStub.resolves(responseData);
 
-            const res = await request(app).get('/repo-prompt-compact?repo=owner/test-repo');
-            expect(res.status).to.equal(500);
-            expect(res.body).to.deep.equal({ error: 'Internal Error' });
+            await createRepoPromptCompact(req, res);
+
+            expect(statusStub.calledWith(200)).to.be.true;
+            expect(sendStub.calledWith({ data: responseData })).to.be.true;
+            expect(compactServiceStub.calledWith('owner', 'repo', [], { cmd: 'value' })).to.be.true;
+        });
+
+        it('should return 500 when service throws exception', async () => {
+            req.body = { repo: 'owner/repo', inputFilePathList: [], customCommands: {} };
+            compactServiceStub.throws(new Error('Service error'));
+
+            await createRepoPromptCompact(req, res);
+
+            expect(statusStub.calledWith(500)).to.be.true;
+            expect(sendStub.calledWith({ error: 'Internal server error' })).to.be.true;
+        });
+
+        it('should handle repo with multiple parts', async () => {
+            req.body = { repo: 'github.com/owner/repo', inputFilePathList: [], customCommands: {} };
+            const responseData = { files: [], structure: {} };
+            compactServiceStub.resolves(responseData);
+
+            await createRepoPromptCompact(req, res);
+
+            expect(compactServiceStub.calledWith('owner', 'repo', [], {})).to.be.true;
+            expect(statusStub.calledWith(200)).to.be.true;
         });
     });
 });
