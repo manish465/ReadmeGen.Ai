@@ -9,7 +9,7 @@
     "scripts": {
         "build": "tsc",
         "start": "node dist/index.js",
-        "dev": "nodemon src/index.ts",
+        "dev": "nodemon src/local.ts",
         "test": "mocha -r ts-node/register src/test/**/*.test.ts"
     },
     "devDependencies": {
