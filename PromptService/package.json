@@ -14,6 +14,7 @@
     },
     "devDependencies": {
         "@types/chai": "^5.2.1",
+        "@types/consul": "^0.40.3",
         "@types/cors": "^2.8.17",
         "@types/express": "^5.0.1",
         "@types/mocha": "^10.0.10",
@@ -30,6 +31,7 @@
     },
     "dependencies": {
         "@octokit/rest": "^21.1.1",
+        "consul": "^2.0.1",
         "cors": "^2.8.5",
         "dotenv": "^16.5.0",
         "express": "^5.1.0",
