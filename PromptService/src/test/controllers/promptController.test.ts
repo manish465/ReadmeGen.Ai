@@ -1,210 +1,108 @@
-import { Request, Response } from 'express';
-import sinon from 'sinon';
+import express from 'express';
+import request from 'supertest';
 import { expect } from 'chai';
-import * as promptController from '../../controllers/promptController';
-import { IFileContentList } from '../../types/github';
-import { Octokit } from '@octokit/rest';
+import sinon from 'sinon';
 
-describe('testing createRepoPrompt controller', () => {
-    let req: Partial<Request>;
-    let res: Partial<Response>;
-    let statusStub: sinon.SinonStub;
-    let sendStub: sinon.SinonStub;
+import {
+    createRepoPrompt,
+    createRepoPromptCompact,
+    healthCheck,
+} from '../../controllers/promptController';
+import * as promptService from '../../service/promptService';
 
-    beforeEach(() => {
-        statusStub = sinon.stub();
-        sendStub = sinon.stub();
+const app = express();
+app.get('/repo-prompt', createRepoPrompt);
+app.get('/repo-prompt-compact', createRepoPromptCompact);
+app.get('/health', healthCheck);
 
-        res = {
-            status: statusStub.returnsThis(), // Allows chaining like res.status().send()
-            send: sendStub,
-        };
-    });
-
+describe('Prompt Controller (Mocha + Chai + Sinon)', () => {
     afterEach(() => {
         sinon.restore();
     });
 
-    it('should return 200 with proper data', async () => {
-        // Arrange
-        const dataSent = {
-            repo: 'https://github.com/user/repo',
-            filePaths: 'package.json',
-        };
-
-        const repoDataRecived: any = {
-            data: {
-                id: 123,
-                node_id: 'node123',
-                name: 'user/repo',
-                full_name: 'user/repo',
-                owner: {
-                    login: 'user',
-                    id: 1,
-                    node_id: 'node1',
-                    avatar_url: 'https://example.com/avatar',
-                    gravatar_id: '',
-                    url: 'https://api.github.com/users/user',
-                    html_url: 'https://github.com/user',
-                    followers_url: 'https://api.github.com/users/user/followers',
-                    following_url: 'https://api.github.com/users/user/following{/other_user}',
-                    gists_url: 'https://api.github.com/users/user/gists{/gist_id}',
-                    starred_url: 'https://api.github.com/users/user/starred{/owner}{/repo}',
-                    subscriptions_url: 'https://api.github.com/users/user/subscriptions',
-                    repos_url: 'https://api.github.com/users/user/repos',
-                    events_url: 'https://api.github.com/users/user/events{/privacy}',
-                    received_events_url: 'https://api.github.com/users/user/received_events',
-                    type: 'User',
-                    site_admin: false,
-                },
-                private: false,
-                description: 'description',
-                fork: false,
-                languages: 'javascript',
-                license: {
-                    key: 'mit',
-                    name: 'MIT License',
-                    spdx_id: 'MIT',
-                    url: 'https://api.github.com/licenses/mit',
-                    node_id: 'node123',
-                },
-                topics: ['react', 'JS'],
-            },
-            status: 200,
-            headers: {},
-            url: 'https://api.github.com/repos/user/repo',
-        };
-
-        const fileContentDataRecived: IFileContentList[] = [
-            { path: 'package.json', content: 'file content' },
-        ];
-
-        req = {
-            query: dataSent,
-        };
-
-        sinon.stub(promptController, 'fetchFilesContent').resolves(fileContentDataRecived);
-        sinon.stub(promptController.octokit.repos, 'get').resolves(repoDataRecived);
-
-        // Act
-        await promptController.createRepoPrompt(req as Request, res as Response);
-
-        expect(statusStub.calledWith(200)).to.be.true;
-        expect(sendStub.called).to.be.true;
-        const sentData = sendStub.getCall(0).args[0];
-
-        expect(sentData.data.name).to.equal('user/repo');
-        expect(sentData.data.fileContentList[0].content).to.equal('file content');
+    describe('healthCheck', () => {
+        it('should return 200 with working message', async () => {
+            const res = await request(app).get('/health');
+            expect(res.status).to.equal(200);
+            expect(res.body).to.deep.equal({ message: 'Prompt Service is working' });
+        });
     });
 
-    it('should handle Octokit error and return appropriate status and message', async () => {
-        // Arrange
-        req = {
-            query: {
-                repo: 'user/repo',
-            },
-        };
-
-        sinon.stub(promptController, 'fetchFilesContent').resolves([]);
-
-        sinon.stub(promptController.octokit.repos, 'get').rejects({
-            error: {
-                status: 403,
-                response: {
-                    data: {
-                        message: 'API rate limit exceeded',
-                    },
-                },
-            },
+    describe('createRepoPrompt', () => {
+        it('should return 400 if repo is missing', async () => {
+            const res = await request(app).get('/repo-prompt');
+            expect(res.status).to.equal(400);
+            expect(res.body).to.have.property('error', 'Missing repo data');
         });
 
-        await promptController.createRepoPrompt(req as Request, res as Response);
+        it('should return 400 if repo format is invalid', async () => {
+            const res = await request(app).get('/repo-prompt?repo=invalidformat');
+            expect(res.status).to.equal(400);
+            expect(res.body).to.have.property('error', 'Invalid repo format');
+        });
 
-        expect(statusStub.calledWith(403)).to.be.true;
-        expect(sendStub.calledWithMatch({ error: 'API rate limit exceeded' })).to.be.true;
+        it('should return 200 and data from service', async () => {
+            const mockData = {
+                name: 'test-repo',
+                description: 'A test repository',
+                languages: 'TypeScript',
+                license: 'MIT',
+                isForked: false,
+                stars: 100,
+                topics: ['open-source', 'typescript'],
+                fileContentList: ['README.md', 'index.ts'],
+            };
+
+            sinon.stub(promptService, 'createRepoPromptService').resolves(mockData as any);
+
+            const res = await request(app).get('/repo-prompt?repo=owner/test-repo');
+            expect(res.status).to.equal(200);
+            expect(res.body).to.deep.equal({ data: mockData });
+        });
+
+        it('should return error response from service failure', async () => {
+            sinon.stub(promptService, 'createRepoPromptService').resolves({
+                status: 404,
+                message: 'Not Found',
+            });
+
+            const res = await request(app).get('/repo-prompt?repo=owner/test-repo');
+            expect(res.status).to.equal(404);
+            expect(res.body).to.deep.equal({ error: 'Not Found' });
+        });
     });
 
-    it('should return 400 if fetchFilesContent returns an error item', async () => {
-        req = {
-            query: {
-                repo: 'user/repo',
-                filePaths: 'README.md',
-            },
-        };
+    describe('createRepoPromptCompact', () => {
+        it('should return 400 if repo is missing', async () => {
+            const res = await request(app).get('/repo-prompt-compact');
+            expect(res.status).to.equal(400);
+            expect(res.body).to.have.property('error', 'Missing repo data');
+        });
 
-        sinon.stub(promptController, 'fetchFilesContent').resolves([
-            {
-                status: 400,
-                errorMessage: 'Not found',
-            },
-        ]);
+        it('should return 400 if repo format is invalid', async () => {
+            const res = await request(app).get('/repo-prompt-compact?repo=invalidformat');
+            expect(res.status).to.equal(400);
+            expect(res.body).to.have.property('error', 'Invalid repo format');
+        });
 
-        const repoDataRecived: any = {
-            data: {
-                id: 123,
-                node_id: 'node123',
-                name: 'user/repo',
-                full_name: 'user/repo',
-                owner: {
-                    login: 'user',
-                    id: 1,
-                    node_id: 'node1',
-                    avatar_url: 'https://example.com/avatar',
-                    gravatar_id: '',
-                    url: 'https://api.github.com/users/user',
-                    html_url: 'https://github.com/user',
-                    followers_url: 'https://api.github.com/users/user/followers',
-                    following_url: 'https://api.github.com/users/user/following{/other_user}',
-                    gists_url: 'https://api.github.com/users/user/gists{/gist_id}',
-                    starred_url: 'https://api.github.com/users/user/starred{/owner}{/repo}',
-                    subscriptions_url: 'https://api.github.com/users/user/subscriptions',
-                    repos_url: 'https://api.github.com/users/user/repos',
-                    events_url: 'https://api.github.com/users/user/events{/privacy}',
-                    received_events_url: 'https://api.github.com/users/user/received_events',
-                    type: 'User',
-                    site_admin: false,
-                },
-                private: false,
-                description: 'description',
-                fork: false,
-                languages: 'javascript',
-                license: {
-                    key: 'mit',
-                    name: 'MIT License',
-                    spdx_id: 'MIT',
-                    url: 'https://api.github.com/licenses/mit',
-                    node_id: 'node123',
-                },
-                topics: ['react', 'JS'],
-            },
-            status: 200,
-            headers: {},
-            url: 'https://api.github.com/repos/user/repo',
-        };
+        it('should return 200 and compact prompt data', async () => {
+            const mockData = 'Some formatted repo string';
+            sinon.stub(promptService, 'createRepoPromptCompactService').resolves(mockData as any);
 
-        sinon.stub(promptController.octokit.repos, 'get').resolves(repoDataRecived);
+            const res = await request(app).get('/repo-prompt-compact?repo=owner/test-repo');
+            expect(res.status).to.equal(200);
+            expect(res.body).to.deep.equal({ data: mockData });
+        });
 
-        await promptController.createRepoPrompt(req as Request, res as Response);
+        it('should return error response from service failure', async () => {
+            sinon.stub(promptService, 'createRepoPromptCompactService').resolves({
+                status: 500,
+                message: 'Internal Error',
+            });
 
-        expect(statusStub.calledWith(400)).to.be.true;
-        expect(sendStub.calledWithMatch({ error: 'Error fetching file content' })).to.be.true;
-    });
-
-    it('should return 400 if repo is missing', async () => {
-        req = { query: {} };
-
-        await promptController.createRepoPrompt(req as Request, res as Response);
-
-        expect(statusStub.calledWith(400)).to.be.true;
-        expect(sendStub.calledWithMatch({ error: 'Missing repo data' })).to.be.true;
-    });
-
-    it('should return 400 if repo format is invalid', async () => {
-        req = { query: { repo: 'badFormatRepo' } };
-
-        await promptController.createRepoPrompt(req as Request, res as Response);
-
-        expect(statusStub.calledWith(400)).to.be.true;
-        expect(sendStub.calledWithMatch({ error: 'Invalid repo format' })).to.be.true;
+            const res = await request(app).get('/repo-prompt-compact?repo=owner/test-repo');
+            expect(res.status).to.equal(500);
+            expect(res.body).to.deep.equal({ error: 'Internal Error' });
+        });
     });
 });
