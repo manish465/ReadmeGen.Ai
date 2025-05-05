@@ -8,3 +8,22 @@ services:
       - "8500:8500"
       - "8600:8600/udp"
     command: agent -dev -client=0.0.0.0
+    networks:
+      - app-network
+
+  prompt-service:
+    build:
+      context: '../PromptService'
+      dockerfile: Dockerfile
+    container_name: prompt-service
+    environment:
+      - PORT=9010
+      - NAME=prompt-service
+    ports:
+      - "9010:9010"
+    command: ["npm", "run", "dev"]
+    networks:
+      - app-network
+
+networks:
+  app-network:
