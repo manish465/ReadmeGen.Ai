@@ -52,3 +52,24 @@ jobs:
       - name: Build and run Spring Boot tests
         run: mvn clean verify
         working-directory: ./ReadmeService
+
+  readme-frontend-tests:
+    name: Run React Frontend Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js v22.14.0
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.14.0'
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: ./readme-gen-frontend
+
+      - name: Run React tests
+        run: npm test
+        working-directory: ./readme-gen-frontend
