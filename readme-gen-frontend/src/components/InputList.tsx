@@ -36,7 +36,7 @@ const InputList: React.FunctionComponent<IInputListProps> = ({
                 <label>{headerText}</label>
                 <div className='list-input-group'>
                     {data.map((value: string, key) => (
-                        <div className='input-item'>
+                        <div key={key} className='input-item'>
                             <input
                                 key={key}
                                 type='text'
