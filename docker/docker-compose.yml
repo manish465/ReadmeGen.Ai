@@ -48,9 +48,23 @@ services:
     depends_on:
       - consul-service
       - readme-writer
+      - prompt-service
     networks:
       - discovery-service-network
       - ai-network
+      - client-network
+
+  readme-gen-frontend:
+    build:
+      context: '../readme-gen-frontend'
+      dockerfile: Dockerfile
+    container_name: readme-gen-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - readme-service
+    networks:
+      - client-network
 
 volumes:
   ollama-models:
@@ -58,3 +72,4 @@ volumes:
 networks:
   discovery-service-network:
   ai-network:
+  client-network:
