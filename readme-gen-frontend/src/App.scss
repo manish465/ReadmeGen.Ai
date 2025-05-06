@@ -1,0 +1,178 @@
+$blue-color: #007bff;
+$text-color: #273f4f;
+$background-color: #f5eedd;
+$danger-color: #ff4d4d;
+$success-color: #28a745;
+
+html,
+body {
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    color: $text-color;
+}
+
+.App {
+    margin: 0 1.2rem;
+    margin-top: 1rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 90vh;
+}
+
+.form-conatiner {
+    background-color: $background-color;
+    padding: 40px 50px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px $text-color;
+    width: 100%;
+    max-width: 600px;
+}
+
+.form-header h1 {
+    margin-bottom: 10px;
+    font-size: 28px;
+    text-align: center;
+}
+
+.form-header p {
+    margin-bottom: 30px;
+    font-size: 16px;
+    text-align: center;
+}
+
+hr {
+    border: 0;
+    border-top: 1px solid $text-color;
+    margin: 30px 0;
+}
+
+.form-group {
+    margin-bottom: 25px;
+}
+
+.form-group label {
+    display: block;
+    font-weight: 600;
+    color: $text-color;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.form-group input[type="url"],
+.form-group textarea {
+    width: calc(100% - 20px);
+    padding: 12px 10px;
+    border: 1px solid $background-color;
+    border-radius: 8px;
+    font-size: 16px;
+    color: $text-color;
+    transition: border-color 0.3s ease;
+}
+
+.form-group input[type="url"]:focus,
+.form-group textarea:focus {
+    border-color: $blue-color;
+    outline: none;
+}
+
+.form-group textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.list-input-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.list-input-group .input-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.list-input-group input[type="text"] {
+    flex-grow: 1;
+    padding: 10px;
+    border: 1px solid $background-color;
+    border-radius: 8px;
+    font-size: 16px;
+    color: $text-color;
+    margin-right: 10px;
+    transition: border-color 0.3s ease;
+}
+
+.list-input-group input[type="text"]:focus {
+    border-color: $blue-color;
+    outline: none;
+}
+
+.list-input-group .remove-btn {
+    background-color: $danger-color;
+    color: $background-color;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s ease;
+}
+
+.list-input-group .remove-btn:hover {
+    background-color: rgba($color: $danger-color, $alpha: 0.9);
+}
+
+.add-btn {
+    background-color: $success-color;
+    color: $background-color;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s ease;
+    display: inline-block;
+    margin-top: 5px;
+}
+
+.add-btn:hover {
+    background-color: rgba($color: $success-color, $alpha: 0.9);
+}
+
+.submit-btn {
+    background-color: $blue-color;
+    color: $background-color;
+    padding: 15px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: 600;
+    width: 100%;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    margin-top: 20px;
+}
+
+.submit-btn:hover {
+    background-color: rgba($color: $blue-color, $alpha: 0.7);
+    transform: translateY(-2px);
+}
+
+.submit-btn:active {
+    transform: translateY(0);
+}
+
+::placeholder {
+    color: rgba($color: $text-color, $alpha: 0.5);
+}
+
+:-ms-input-placeholder {
+    color: rgba($color: $text-color, $alpha: 0.5);
+}
+
+::-ms-input-placeholder {
+    color: rgba($color: $text-color, $alpha: 0.5);
+}
