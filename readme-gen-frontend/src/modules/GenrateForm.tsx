@@ -92,9 +92,18 @@ const GenrateForm = () => {
             <Modal
                 isOpen={readmeModal.isOpen}
                 onClose={closeModal}
-                title={readmeModal.title}>
+                title={readmeModal.title}
+                downloadContent={readmeModal.content}>
                 <pre>{readmeModal.content}</pre>
             </Modal>
+
+            {isLoading && (
+                <div className='loading-overlay'>
+                    <div className='loading-spinner'></div>
+                    <div className='loading-text'>Generating README...</div>
+                </div>
+            )}
+
             <div className='form-conatiner'>
                 <div className='form-header'>
                     <h1>ReadMeGen.AI</h1>
