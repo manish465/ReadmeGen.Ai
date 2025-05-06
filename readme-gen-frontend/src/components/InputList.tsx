@@ -1,12 +1,20 @@
-import { IInputListProps } from "../types/GenrateFormTypes";
+import React from "react";
 
-const InputList = ({
+interface IInputListProps {
+    data: string[];
+    headerText: string;
+    placeholderText: string;
+    submitButtonText: string;
+    setCurrentData: (data: string[]) => void;
+}
+
+const InputList: React.FunctionComponent<IInputListProps> = ({
     headerText,
     data,
     placeholderText,
     submitButtonText,
     setCurrentData,
-}: IInputListProps) => {
+}) => {
     const handelAddData = (data: string[]) => {
         setCurrentData([...data, ""]);
     };

@@ -1,7 +1,11 @@
-export interface IInputListProps {
-    data: string[];
-    headerText: string;
-    placeholderText: string;
-    submitButtonText: string;
-    setCurrentData: (data: string[]) => void;
+export interface NotificationState {
+    show: boolean;
+    message: string;
+    type: "success" | "error";
+}
+
+export interface ModalState {
+    isOpen: boolean;
+    title: string;
+    content: string;
 }
