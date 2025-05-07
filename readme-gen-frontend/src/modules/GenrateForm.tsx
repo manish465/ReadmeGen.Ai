@@ -43,7 +43,7 @@ const GenrateForm = () => {
         closeNotification();
 
         axios
-            .post("http://localhost:9010/api/v1/prompt/prompt-compact", {
+            .post("http://localhost:9020/api/v1/readme", {
                 repo: repoData,
                 inputFilePathList: filePathListData.filter(
                     (filePath) => !_.isEmpty(filePath.trim()),
