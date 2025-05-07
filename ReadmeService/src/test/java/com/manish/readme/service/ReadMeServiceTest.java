@@ -8,6 +8,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
@@ -43,7 +44,7 @@ public class ReadMeServiceTest {
         ChatClient.CallResponseSpec callResponseSpec = mock(ChatClient.CallResponseSpec.class);
 
 
-        when(restTemplate.postForObject(anyString(), any(), any()))
+        when(restTemplate.exchange(anyString(), any(), any(HttpEntity.class), eq(String.class)))
                 .thenReturn(mockResponseEntity);
 
         when(chatClient.prompt(anyString())).thenReturn(chatClientRequestSpec);
