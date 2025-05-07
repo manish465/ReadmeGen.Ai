@@ -19,4 +19,4 @@ spring:
       base-url: http://readme-writer:11434/
       chat:
         options:
-          model: deepseek-r1:1.5b
+          model: gemma3:4b

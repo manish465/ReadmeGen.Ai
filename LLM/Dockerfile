@@ -1,16 +1,19 @@
-FROM ollama/ollama:0.6.8
+FROM ubuntu:latest
 
-RUN apt-get update && apt-get install -y python3 python3-pip curl
-COPY requirements.txt /app/requirements.txt
-RUN pip3 install --no-cache-dir -r /app/requirements.txt
-
+# Set the working directory
 WORKDIR /app
-COPY Modelfile /app/Modelfile
-COPY entrypoint.sh /app/entrypoint.sh
-COPY proxy.py /app/proxy.py
 
-RUN chmod +x /app/entrypoint.sh
+RUN apt-get update && \
+    apt-get install -y curl && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
-EXPOSE 11434 8080
+RUN curl -L https://github.com/ollama/ollama/releases/latest/download/ollama-linux-amd64 -o ollama && \
+    chmod +x ollama && \
+    ./ollama serve &
 
-ENTRYPOINT ["/app/entrypoint.sh"]
+COPY ModelFile /app/ModelFile
+
+EXPOSE 11434
+
+ENTRYPOINT ["/bin/bash", "-c", "./ollama serve & sleep infinity"]

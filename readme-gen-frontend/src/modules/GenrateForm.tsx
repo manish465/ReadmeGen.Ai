@@ -52,13 +52,13 @@ const GenrateForm = () => {
                     (infoText) => !_.isEmpty(infoText.trim()),
                 ),
             })
-            .then((response) =>
+            .then((response) => {
                 setReadmeModal({
                     isOpen: true,
                     title: "Generated README.md",
-                    content: response.data.data,
-                }),
-            )
+                    content: response.data,
+                });
+            })
             .catch((error) =>
                 setNotification({
                     message: error.message || "An unexpected error occurred.",
