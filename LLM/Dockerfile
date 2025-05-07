@@ -1,12 +1,19 @@
-FROM alpine/ollama:llama3.2
+FROM ubuntu:latest
 
+# Set the working directory
 WORKDIR /app
-COPY Modelfile /app/Modelfile
-COPY entrypoint.sh /app/entrypoint.sh
 
-RUN ls -la /app
+RUN apt-get update && \
+    apt-get install -y curl && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
-RUN chmod +x /app/entrypoint.sh
+RUN curl -L https://github.com/ollama/ollama/releases/latest/download/ollama-linux-amd64 -o ollama && \
+    chmod +x ollama && \
+    ./ollama serve &
+
+COPY ModelFile /app/ModelFile
 
 EXPOSE 11434
-ENTRYPOINT ["/app/entrypoint.sh"]
+
+ENTRYPOINT ["/bin/bash", "-c", "./ollama serve & sleep infinity"]
