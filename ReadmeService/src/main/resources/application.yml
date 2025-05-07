@@ -16,6 +16,7 @@ spring:
         health-check-interval: 10s
   ai:
     ollama:
-      base-url: http://readme-writer:11434/v1
+      base-url: http://readme-writer:11434/
       chat:
-        model: gemma3:1b
+        options:
+          model: deepseek-r1:1.5b
