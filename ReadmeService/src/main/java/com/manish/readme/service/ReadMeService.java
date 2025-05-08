@@ -34,10 +34,6 @@ public class ReadMeService {
         try {
             promptResponseEntity = restTemplate.exchange(url, HttpMethod.POST, new HttpEntity<>(generateReadmeRequestDTO), String.class);
 
-            if(promptResponseEntity == null) {
-                throw new ApplicationException("Something went wrong 1");
-            }
-
             if(!promptResponseEntity.getStatusCode().is2xxSuccessful()) {
                 throw new ApplicationException("Something went wrong 2");
             }
@@ -45,7 +41,7 @@ public class ReadMeService {
             throw new ApplicationException(e.getMessage());
         }
 
-        String customPromptContent = "";
+        String customPromptContent;
 
         Resource resource = resourceLoader.getResource("classpath:prompt.md");
         try (InputStream inputStream = resource.getInputStream()) {
