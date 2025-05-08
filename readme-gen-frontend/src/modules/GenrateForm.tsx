@@ -43,7 +43,7 @@ const GenrateForm = () => {
         closeNotification();
 
         axios
-            .post("http://localhost:9010/api/v1/prompt/prompt-compact", {
+            .post("http://localhost:9020/api/v1/readme", {
                 repo: repoData,
                 inputFilePathList: filePathListData.filter(
                     (filePath) => !_.isEmpty(filePath.trim()),
@@ -52,13 +52,13 @@ const GenrateForm = () => {
                     (infoText) => !_.isEmpty(infoText.trim()),
                 ),
             })
-            .then((response) =>
+            .then((response) => {
                 setReadmeModal({
                     isOpen: true,
                     title: "Generated README.md",
-                    content: response.data.data,
-                }),
-            )
+                    content: response.data,
+                });
+            })
             .catch((error) =>
                 setNotification({
                     message: error.message || "An unexpected error occurred.",
