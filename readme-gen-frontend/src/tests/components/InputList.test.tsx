@@ -1,55 +1,210 @@
-import React from "react";
-import { render, fireEvent, screen } from "@testing-library/react";
+import {
+    render,
+    fireEvent,
+    screen,
+    waitFor,
+    act,
+} from "@testing-library/react";
 import "@testing-library/jest-dom";
-import InputList from "../../components/InputList";
+import GenerateForm from "../../modules/GenrateForm";
 
-describe("InputList component", () => {
-    let data: string[];
-    let setCurrentData: jest.Mock;
+class MockEventSource {
+    onmessage: ((event: { data: string }) => void) | null = null;
+    onerror: ((error: any) => void) | null = null;
+    private _completeCallback: (() => void) | null = null;
 
+    constructor(public url: string) {}
+
+    addEventListener(event: string, callback: () => void) {
+        if (event === "complete") {
+            this._completeCallback = callback;
+        }
+    }
+
+    close() {}
+
+    _emitMessage(data: string) {
+        if (this.onmessage) {
+            this.onmessage({ data });
+        }
+    }
+
+    _emitComplete() {
+        if (this._completeCallback) {
+            this._completeCallback();
+        }
+    }
+
+    _emitError(error: any) {
+        if (this.onerror) {
+            this.onerror(error);
+        }
+    }
+}
+
+global.EventSource = MockEventSource as any;
+
+let mockEventSource: MockEventSource;
+
+describe("GenerateForm Component", () => {
     beforeEach(() => {
-        data = ["Item 1", "Item 2"];
-        setCurrentData = jest.fn();
-        render(
-            <InputList
-                headerText='Test Header'
-                data={data}
-                placeholderText='Enter item'
-                submitButtonText='Add Item'
-                setCurrentData={setCurrentData}
-            />,
+        jest.clearAllMocks();
+        mockEventSource = new MockEventSource("");
+    });
+
+    it("renders form elements correctly", () => {
+        render(<GenerateForm />);
+
+        expect(screen.getByText("ReadMeGen.AI")).toBeInTheDocument();
+        expect(
+            screen.getByPlaceholderText(
+                /github.com\/username\/repository.git/i,
+            ),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(/File Paths that you can improve the context/i),
+        ).toBeInTheDocument();
+        expect(screen.getAllByText(/Info Text/i)[0]).toBeInTheDocument(); // Use getAllByText for multiple matches
+    });
+
+    it("handles form input changes", () => {
+        render(<GenerateForm />);
+
+        const repoInput = screen.getByPlaceholderText(
+            /github.com\/username\/repository.git/i,
         );
+        fireEvent.change(repoInput, {
+            target: { value: "https://github.com/test/repo.git" },
+        });
+
+        expect(repoInput).toHaveValue("https://github.com/test/repo.git");
     });
 
-    it("renders header text", () => {
-        expect(screen.getByText("Test Header")).toBeInTheDocument();
+    it("handles successful README generation", async () => {
+        render(<GenerateForm />);
+
+        // Fill form
+        const repoInput = screen.getByPlaceholderText(
+            /github.com\/username\/repository.git/i,
+        );
+        fireEvent.change(repoInput, {
+            target: { value: "https://github.com/test/repo.git" },
+        });
+
+        // Mock EventSource before submitting
+        const originalEventSource = global.EventSource;
+        global.EventSource = jest.fn(() => mockEventSource) as any;
+
+        // Submit form
+        const submitButton = screen.getByText(/Generate Readme.md/i);
+        fireEvent.click(submitButton);
+
+        // Simulate streaming responses
+        act(() => {
+            mockEventSource._emitMessage("# Test Repo\n");
+            mockEventSource._emitMessage("## Description\n");
+            mockEventSource._emitMessage("This is a test repository");
+            mockEventSource._emitComplete();
+        });
+
+        // Wait for success message
+        await waitFor(() => {
+            expect(
+                screen.getByText(/README generated successfully!/i),
+            ).toBeInTheDocument();
+        });
+
+        // Restore original EventSource
+        global.EventSource = originalEventSource;
     });
 
-    it("renders all inputs from data array", () => {
-        const inputs = screen.getAllByPlaceholderText("Enter item");
-        expect(inputs.length).toBe(data.length);
-        expect(inputs[0]).toHaveValue("Item 1");
-        expect(inputs[1]).toHaveValue("Item 2");
+    it("handles generation error", async () => {
+        render(<GenerateForm />);
+
+        // Mock EventSource before submitting
+        const originalEventSource = global.EventSource;
+        global.EventSource = jest.fn(() => mockEventSource) as any;
+
+        // Submit form
+        const submitButton = screen.getByText(/Generate Readme.md/i);
+        fireEvent.click(submitButton);
+
+        // Simulate error
+        act(() => {
+            mockEventSource._emitError(new Error("Connection failed"));
+        });
+
+        // Verify error notification
+        await waitFor(() => {
+            expect(
+                screen.getByText(/Error generating README: Connection failed/i),
+            ).toBeInTheDocument();
+        });
+
+        // Restore original EventSource
+        global.EventSource = originalEventSource;
     });
 
-    it("calls setCurrentData on input change", () => {
-        const input = screen.getAllByPlaceholderText("Enter item")[0];
-        fireEvent.change(input, { target: { value: "Updated Item 1" } });
-        expect(setCurrentData).toHaveBeenCalledWith([
-            "Updated Item 1",
-            "Item 2",
-        ]);
+    it("handles modal close", async () => {
+        render(<GenerateForm />);
+
+        // Mock EventSource before submitting
+        const originalEventSource = global.EventSource;
+        global.EventSource = jest.fn(() => mockEventSource) as any;
+
+        // Submit form
+        const submitButton = screen.getByText(/Generate Readme.md/i);
+        fireEvent.click(submitButton);
+
+        // Simulate content and completion
+        act(() => {
+            mockEventSource._emitMessage("# Test Content");
+            mockEventSource._emitComplete();
+        });
+
+        // Wait for modal to appear and close it
+        await waitFor(() => {
+            const closeButton = screen.getByLabelText(/close/i);
+            fireEvent.click(closeButton);
+        });
+
+        // Verify modal is closed
+        await waitFor(() => {
+            expect(
+                screen.queryByText(/# Test Content/),
+            ).not.toBeInTheDocument();
+        });
+
+        // Restore original EventSource
+        global.EventSource = originalEventSource;
     });
 
-    it("calls setCurrentData with one less item on remove", () => {
-        const removeButtons = screen.getAllByText("Remove");
-        fireEvent.click(removeButtons[0]);
-        expect(setCurrentData).toHaveBeenCalledWith(["Item 2"]);
-    });
+    it("shows preview content while loading", async () => {
+        render(<GenerateForm />);
 
-    it("adds a new empty input on clicking add button", () => {
-        const addButton = screen.getByText("+ Add Item");
-        fireEvent.click(addButton);
-        expect(setCurrentData).toHaveBeenCalledWith([...data, ""]);
+        // Mock EventSource before submitting
+        const originalEventSource = global.EventSource;
+        global.EventSource = jest.fn(() => mockEventSource) as any;
+
+        // Submit form
+        const submitButton = screen.getByText(/Generate Readme.md/i);
+        fireEvent.click(submitButton);
+
+        // Emit multiple messages
+        act(() => {
+            mockEventSource._emitMessage("Line 1\n");
+            mockEventSource._emitMessage("Line 2\n");
+            mockEventSource._emitMessage("Line 3\n");
+            mockEventSource._emitMessage("Line 4\n");
+        });
+
+        // Verify preview shows last 3 lines
+        await waitFor(() => {
+            const preview = screen.getByText(/Line 2.*Line 3.*Line 4/s);
+            expect(preview).toBeInTheDocument();
+        });
+
+        // Restore original EventSource
+        global.EventSource = originalEventSource;
     });
 });

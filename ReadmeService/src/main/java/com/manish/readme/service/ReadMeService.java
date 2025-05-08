@@ -12,8 +12,9 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.Objects;
 
@@ -25,33 +26,41 @@ public class ReadMeService {
     private final RestTemplate restTemplate;
     private final ResourceLoader resourceLoader;
 
-    public String generateReadme(GenerateReadmeRequestDTO generateReadmeRequestDTO) {
+    public Flux<String> generateReadme(GenerateReadmeRequestDTO generateReadmeRequestDTO) {
         log.info(" || called generateReadme in ReadMeService with {} ||", generateReadmeRequestDTO);
 
-        String url = "http://prompt-service:9010/api/v1/prompt/prompt-compact";
-        ResponseEntity<String> promptResponseEntity;
+        return Mono.fromCallable(() -> {
+                    String url = "http://prompt-service:9010/api/v1/prompt/prompt-compact";
+                    ResponseEntity<String> promptResponseEntity;
 
-        try {
-            promptResponseEntity = restTemplate.exchange(url, HttpMethod.POST, new HttpEntity<>(generateReadmeRequestDTO), String.class);
+                    try {
+                        promptResponseEntity = restTemplate.exchange(
+                                url,
+                                HttpMethod.POST,
+                                new HttpEntity<>(generateReadmeRequestDTO),
+                                String.class
+                        );
 
-            if(!promptResponseEntity.getStatusCode().is2xxSuccessful()) {
-                throw new ApplicationException("Something went wrong 2");
-            }
-        } catch (Exception e) {
-            throw new ApplicationException(e.getMessage());
-        }
+                        if (!promptResponseEntity.getStatusCode().is2xxSuccessful()) {
+                            throw new ApplicationException("Failed to get prompt: " + promptResponseEntity.getStatusCode());
+                        }
 
-        String customPromptContent;
+                        Resource resource = resourceLoader.getResource("classpath:prompt.md");
+                        String customPromptContent;
+                        try (InputStream inputStream = resource.getInputStream()) {
+                            customPromptContent = new String(inputStream.readAllBytes());
+                        }
 
-        Resource resource = resourceLoader.getResource("classpath:prompt.md");
-        try (InputStream inputStream = resource.getInputStream()) {
-            customPromptContent = new String(inputStream.readAllBytes());
-        } catch (IOException e) {
-            throw new ApplicationException(e.getMessage());
-        }
-
-        return chatClient.prompt(Objects.requireNonNull(promptResponseEntity.getBody()) + customPromptContent)
-                .call()
-                .content();
+                        return Objects.requireNonNull(promptResponseEntity.getBody()) + customPromptContent;
+                    } catch (Exception e) {
+                        throw new ApplicationException(e.getMessage());
+                    }
+                })
+                .flatMapMany(prompt -> chatClient.prompt(prompt)
+                        .stream()
+                        .content()
+                        .onErrorMap(e -> new ApplicationException("Error in AI response: " + e.getMessage()))
+                )
+                .onErrorMap(e -> e instanceof ApplicationException ? e : new ApplicationException(e.getMessage()));
     }
 }

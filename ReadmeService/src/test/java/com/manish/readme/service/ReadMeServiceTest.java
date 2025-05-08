@@ -1,6 +1,7 @@
 package com.manish.readme.service;
 
 import com.manish.readme.dto.GenerateReadmeRequestDTO;
+import com.manish.readme.exception.ApplicationException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Answers;
@@ -15,13 +16,14 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
+import reactor.core.publisher.Flux;
+import reactor.test.StepVerifier;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -43,20 +45,22 @@ public class ReadMeServiceTest {
     void generateReadme_Success() throws IOException {
         // Arrange
         String expectedPrompt = "Generated prompt";
-        String expectedAiResponse = "AI generated README";
+        List<String> expectedStreamResponses = List.of(
+                "First chunk",
+                "Second chunk",
+                "Final chunk"
+        );
         String promptContent = "test prompt content";
         GenerateReadmeRequestDTO generateReadmeRequestDTO =
                 new GenerateReadmeRequestDTO("abc", List.of("123"), List.of("sdsf"));
 
         ResponseEntity<String> mockResponseEntity = new ResponseEntity<>(expectedPrompt, HttpStatus.OK);
 
-        // Mock Resource
         Resource mockResource = mock(Resource.class);
         InputStream mockInputStream = new ByteArrayInputStream(promptContent.getBytes());
         when(mockResource.getInputStream()).thenReturn(mockInputStream);
         when(resourceLoader.getResource(anyString())).thenReturn(mockResource);
 
-        // Mock RestTemplate
         when(restTemplate.exchange(
                 anyString(),
                 eq(HttpMethod.POST),
@@ -64,17 +68,38 @@ public class ReadMeServiceTest {
                 eq(String.class)
         )).thenReturn(mockResponseEntity);
 
-        // Mock ChatClient
         ChatClient.ChatClientRequestSpec chatClientRequestSpec = mock(ChatClient.ChatClientRequestSpec.class);
-        ChatClient.CallResponseSpec callResponseSpec = mock(ChatClient.CallResponseSpec.class);
+        ChatClient.StreamResponseSpec streamResponseSpec = mock(ChatClient.StreamResponseSpec.class);
+
         when(chatClient.prompt(anyString())).thenReturn(chatClientRequestSpec);
-        when(chatClientRequestSpec.call()).thenReturn(callResponseSpec);
-        when(callResponseSpec.content()).thenReturn(expectedAiResponse);
+        when(chatClientRequestSpec.stream()).thenReturn(streamResponseSpec);
+        when(streamResponseSpec.content()).thenReturn(Flux.fromIterable(expectedStreamResponses));
 
-        // Act
-        String actualResult = readMeService.generateReadme(generateReadmeRequestDTO);
+        // Act and Assert
+        StepVerifier.create(readMeService.generateReadme(generateReadmeRequestDTO))
+                .expectNext("First chunk")
+                .expectNext("Second chunk")
+                .expectNext("Final chunk")
+                .verifyComplete();
+    }
 
-        // Assert
-        assertEquals(expectedAiResponse, actualResult);
+    @Test
+    void generateReadme_Error() {
+        // Arrange
+        GenerateReadmeRequestDTO generateReadmeRequestDTO =
+                new GenerateReadmeRequestDTO("abc", List.of("123"), List.of("sdsf"));
+
+        // Mock RestTemplate to throw an exception
+        when(restTemplate.exchange(
+                anyString(),
+                eq(HttpMethod.POST),
+                any(HttpEntity.class),
+                eq(String.class)
+        )).thenThrow(new RuntimeException("API Error"));
+
+        // Act and Assert
+        StepVerifier.create(readMeService.generateReadme(generateReadmeRequestDTO))
+                .expectError(ApplicationException.class)
+                .verify();
     }
 }
